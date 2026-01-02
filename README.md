@@ -1,4 +1,4 @@
-# The Phoenix Engine: A Winning Solution for the UrbanEats Turnaround
+# The Phoenix Engine: A Solution for the UrbanEats Turnaround
 
 ### **Team Second Order** | SEED Business Challenge 2026
 
