@@ -6,30 +6,35 @@ import plotly.express as px
 
 st.set_page_config(
     page_title="Phoenix Engine - Command Center",
-    page_icon="🔥",
     layout="wide"
 )
 
-@st.cache_data
-def load_master_data():
-    try:
-        return pd.read_parquet("urbaneats_master_dataset.parquet")
-    except FileNotFoundError:
-        st.error("Master dataset not found. Please run `1_data_ingestion_and_preparation.py` first.")
-        return None
+# --- SIDEBAR BRANDING ---
+st.sidebar.title("Team Second Order")
+st.sidebar.markdown("---")
 
-df = load_master_data()
+@st.cache_data
+def load_data():
+    try:
+        df_master = pd.read_parquet("urbaneats_master_dataset.parquet")
+        df_financials = pd.read_parquet("urbaneats_financial_summary.parquet")
+        return df_master, df_financials
+    except FileNotFoundError:
+        st.error("Master or financial dataset not found. Please run `1_data_ingestion_and_preparation.py` first.")
+        return None, None
+
+df, df_financials = load_data()
 
 if df is None:
     st.stop()
 
-st.title("🔥 The Phoenix Engine: UrbanEats Command Center")
+st.title("The Phoenix Engine: UrbanEats Command Center")
 st.markdown("A real-time, interactive digital twin for diagnosing the crisis and engineering the turnaround.")
 
 st.subheader("Crisis & Turnaround Scorecard")
-total_deliveries_8mo = len(df)
 annual_revenue_est = df['platform_revenue'].sum() * (12/8)
-annual_loss_est = df['gross_margin'].sum() * (12/8) - 336000
+annual_fixed_cost = df_financials['total_fixed_cost'].sum() * (12/8)
+annual_loss_est = df['gross_margin'].sum() * (12/8) - annual_fixed_cost
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Annual Revenue", f"${annual_revenue_est/1_000_000:.2f}M", "60% YoY")
@@ -49,13 +54,29 @@ fig_cum_margin.update_layout(title="Monthly margin shows consistent losses, cumu
 st.plotly_chart(fig_cum_margin, use_container_width=True)
 
 st.subheader("National Profitability Footprint")
-city_perf = df.groupby('city_name').agg(total_margin=('gross_margin', 'sum'), lat=('lat', 'mean'), lng=('lng', 'mean'), num_deliveries=('delivery_id', 'count')).reset_index()
+city_perf = df.groupby('city_name').agg(
+    total_margin=('gross_margin', 'sum'),
+    lat=('customer_latitude', 'mean'),
+    lon=('customer_longitude', 'mean'),
+    num_deliveries=('delivery_id', 'count')
+).reset_index()
+
 city_perf['color'] = city_perf['total_margin'].apply(lambda x: 'green' if x > 0 else 'red')
 city_perf['size'] = abs(city_perf['total_margin']) / 100
 
-fig_map = px.scatter_mapbox(city_perf, lat="lat", lon="lng", size="size", color="color", hover_name="city_name", hover_data={"total_margin": ":,.0f", "num_deliveries": True, "size": False, "color": False}, mapbox_style="carto-darkmatter", zoom=3.5, title="Red markets represent financial drain; Green markets are the blueprint for success")
+fig_map = px.scatter_mapbox(
+    city_perf,
+    lat="lat",
+    lon="lon",
+    size="size",
+    color="color",
+    hover_name="city_name",
+    hover_data={"total_margin": ":,.0f", "num_deliveries": True, "size": False, "color": False},
+    mapbox_style="carto-darkmatter",
+    zoom=3.5,
+    title="Red markets represent financial drain; Green markets are the blueprint for success"
+)
 fig_map.update_layout(showlegend=False)
 st.plotly_chart(fig_map, use_container_width=True)
 
 st.sidebar.success("Phoenix Engine is online. Select a module to begin the turnaround.")
-st.sidebar.image("https://i.imgur.com/eJ24e59.png", width=150)
