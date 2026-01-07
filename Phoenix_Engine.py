@@ -52,7 +52,6 @@ fig_cum_margin.add_trace(go.Bar(x=monthly_margin['month'], y=monthly_margin['gro
 fig_cum_margin.add_trace(go.Scatter(x=monthly_margin['month'], y=monthly_margin['cumulative_margin'], name='Cumulative Gross Margin', mode='lines+markers', line=dict(color='white', width=3), yaxis='y2'))
 fig_cum_margin.update_layout(title="Monthly margin shows consistent losses, cumulative debt deepens", template="plotly_dark", yaxis=dict(title='Monthly Gross Margin ($)'), yaxis2=dict(title='Cumulative Gross Margin ($)', overlaying='y', side='right'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
 st.plotly_chart(fig_cum_margin, use_container_width=True)
-
 st.subheader("National Profitability Footprint")
 city_perf = df.groupby('city_name').agg(
     total_margin=('gross_margin', 'sum'),
@@ -61,22 +60,28 @@ city_perf = df.groupby('city_name').agg(
     num_deliveries=('delivery_id', 'count')
 ).reset_index()
 
-city_perf['color'] = city_perf['total_margin'].apply(lambda x: 'green' if x > 0 else 'red')
+# 1. Define the Category Logic
+city_perf['status'] = city_perf['total_margin'].apply(lambda x: 'Profit' if x > 0 else 'Loss')
 city_perf['size'] = abs(city_perf['total_margin']) / 100
+
+# 2. Map the colors explicitly (Cyberpunk Neon Scheme)
+# 'Profit' -> Neon Green (#00ff41)
+# 'Loss'   -> Neon Red   (#ff4b4b)
 
 fig_map = px.scatter_mapbox(
     city_perf,
     lat="lat",
     lon="lon",
     size="size",
-    color="color",
+    color="status", # Use the new status column
     hover_name="city_name",
-    hover_data={"total_margin": ":,.0f", "num_deliveries": True, "size": False, "color": False},
+    hover_data={"total_margin": ":,.0f", "num_deliveries": True, "size": False, "status": False},
     mapbox_style="carto-darkmatter",
     zoom=3.5,
-    title="Red markets represent financial drain; Green markets are the blueprint for success"
+    title="Red markets represent financial drain; Green markets are the blueprint for success",
+    # THE FIX IS HERE:
+    color_discrete_map={'Profit': '#00ff41', 'Loss': '#ff4b4b'}
 )
-fig_map.update_layout(showlegend=False)
-st.plotly_chart(fig_map, use_container_width=True)
 
-st.sidebar.success("Phoenix Engine is online. Select a module to begin the turnaround.")
+fig_map.update_layout(showlegend=True) 
+st.plotly_chart(fig_map, use_container_width=True)
